@@ -1,31 +1,90 @@
 {
   "document_id": "DEMO-001",
-  "solver": "Z3",
-  "status": "UNSAT",
-  "raw_unsat_core": [
-    "ENABLE_SOD_1301",
-    "SCENARIO_repository_owner_attempts_to_approve_own_pull_request",
-    "ENABLE_SOD_1302"
+  "global_consistency": {
+    "status": "INCONSISTENT",
+    "solver_result": "UNSAT",
+    "requirement_count": 7,
+    "unsat_core": [
+      "ENABLE_ACCESS_1001",
+      "SCENARIO_dashboard_access_requested_by_registered_user",
+      "ENABLE_ACCESS_1002"
+    ]
+  },
+  "mus_inconsistencies": [
+    [
+      "ACCESS-1001",
+      "ACCESS-1002"
+    ],
+    [
+      "EMAIL-2001",
+      "EMAIL-2002"
+    ]
   ],
-  "mus_count": 1,
-  "conflicts": [
+  "pairwise_inconsistencies": [
     {
-      "conflict_id": "MUS-001",
       "requirement_ids": [
-        "SOD-1301",
-        "SOD-1302"
+        "ACCESS-1001",
+        "ACCESS-1002"
       ],
-      "conflict_reason": "These requirements apply to the same scenario 'repository_owner_attempts_to_approve_own_pull_request' but impose incompatible outcomes: SOD-1301 requires approval_authorized is_false; SOD-1302 requires approval_authorized is_true; SOD-1302 requires merge_authorized is_true.",
-      "requirements": [
+      "status": "INCONSISTENT",
+      "reason": "ACCESS-1001 and ACCESS-1002 constrain the same outcome under simultaneously applicable conditions, and the combined constraints are unsatisfiable.",
+      "conflicting_outcomes": [
         {
-          "requirement_id": "SOD-1301",
-          "text": "When an engineer who owns a repository attempts to approve their own pull request, the engineer shall not be authorized to approve the pull request."
-        },
+          "symbol": "dashboard_access_granted",
+          "requirement_1": {
+            "operator": "is_true",
+            "value": null
+          },
+          "requirement_2": {
+            "operator": "is_false",
+            "value": null
+          }
+        }
+      ]
+    },
+    {
+      "requirement_ids": [
+        "EMAIL-2001",
+        "EMAIL-2002"
+      ],
+      "status": "INCONSISTENT",
+      "reason": "EMAIL-2001 and EMAIL-2002 constrain the same outcome under simultaneously applicable conditions, and the combined constraints are unsatisfiable.",
+      "conflicting_outcomes": [
         {
-          "requirement_id": "SOD-1302",
-          "text": "When an engineer who owns a repository attempts to approve their own pull request, the engineer shall be authorized, as the repository owner, to approve and merge the pull request."
+          "symbol": "order_confirmation_email_sent",
+          "requirement_1": {
+            "operator": "is_true",
+            "value": null
+          },
+          "requirement_2": {
+            "operator": "is_false",
+            "value": null
+          }
         }
       ]
     }
-  ]
+  ],
+  "vacuity": [
+    {
+      "requirement_id": "VAC-3001",
+      "scenario_key": "login_attempt_count_out_of_bounds",
+      "status": "VACUOUS",
+      "reason": "The requirement antecedent is unsatisfiable. Therefore the requirement can never become applicable and is trivially satisfied.",
+      "antecedent": [
+        {
+          "symbol": "login_attempt_count",
+          "sort": "Int",
+          "op": ">",
+          "value": 10
+        },
+        {
+          "symbol": "login_attempt_count",
+          "sort": "Int",
+          "op": "<",
+          "value": 3
+        }
+      ]
+    }
+  ],
+  "boundary_range_overconstraints": []
 }
