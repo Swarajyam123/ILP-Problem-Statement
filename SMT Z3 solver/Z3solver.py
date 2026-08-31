@@ -677,6 +677,74 @@ Do not make requirements logically incompatible unless:
 
 61. Before returning the IR, verify that every value used with an Enum
     equality or inequality operator exists in that Enum's domain axiom.
+
+62. A canonical symbol must use exactly one sort throughout the entire
+document.
+
+Before returning the IR, verify that every repeated symbol uses the
+same sort in every antecedent and consequent.
+
+If two requirements constrain the same numeric quantity, they must use:
+- the same canonical symbol;
+- the same numeric sort;
+- compatible units.
+
+Never use Int or Real for a symbol in one requirement and Enum or String
+for the same symbol in another requirement.
+
+63. Numeric quantities must remain numeric.
+
+If a requirement contains a numeric threshold, count, size, capacity,
+duration, percentage, limit, quantity, or measurement, formalize it
+using Int or Real.
+
+Do not encode numeric comparison expressions as Enum or String values.
+
+Incorrect:
+
+{
+  "symbol": "maximum_batch_size",
+  "sort": "Enum:MaximumBatchSize",
+  "op": "=",
+  "value": "at_least_1000_records"
+}
+
+Correct:
+
+{
+  "symbol": "maximum_batch_size",
+  "sort": "Int",
+  "op": ">=",
+  "value": 1000
+}
+
+64. Comparison phrases must be represented by comparison operators.
+
+"at least 1000 records" must be:
+
+{
+  "symbol": "maximum_batch_size",
+  "sort": "Int",
+  "op": ">=",
+  "value": 1000
+}
+
+"less than 500 records" must be:
+
+{
+  "symbol": "maximum_batch_size",
+  "sort": "Int",
+  "op": "<",
+  "value": 500
+}
+
+Do not encode phrases such as:
+- at_least_1000_records
+- less_than_500_records
+- greater_than_10
+- below_500
+
+as Enum or String values when they represent numeric constraints.
 INPUT:
 '''
  
@@ -741,25 +809,101 @@ def check(s, reqs, scenarios, ids=None):
 def core_ids(reqs, core):
     rev={str(v):k for k,v in reqs.items()}; return [rev[x] for x in core if x in rev]
  
-def minimize_core(s, reqs, scenarios, ids):
-    mus=list(dict.fromkeys(ids)); assert check(s,reqs,scenarios,mus)[0]==unsat
-    i=0
-    while i<len(mus):
-        trial=mus[:i]+mus[i+1:]
-        if trial and check(s,reqs,scenarios,trial)[0]==unsat: mus=trial
-        else: i+=1
+# def minimize_core(s, reqs, scenarios, ids):
+#     mus=list(dict.fromkeys(ids)); assert check(s,reqs,scenarios,mus)[0]==unsat
+#     i=0
+#     while i<len(mus):
+#         trial=mus[:i]+mus[i+1:]
+#         if trial and check(s,reqs,scenarios,trial)[0]==unsat: mus=trial
+#         else: i+=1
+#     return mus
+
+
+def minimize_core(s, reqs, scenarios, ir, ids):
+
+    mus = list(dict.fromkeys(ids))
+
+    assert check_subset(
+        s,
+        reqs,
+        scenarios,
+        ir,
+        mus
+    )[0] == unsat
+
+    i = 0
+
+    while i < len(mus):
+
+        trial = mus[:i] + mus[i + 1:]
+
+        if (
+            trial
+            and check_subset(
+                s,
+                reqs,
+                scenarios,
+                ir,
+                trial
+            )[0] == unsat
+        ):
+            mus = trial
+
+        else:
+            i += 1
+
     return mus
  
-def all_muses_small(s, reqs, scenarios, limit=20):
-    ids=list(reqs)
-    if len(ids)>limit: raise ValueError("Use MARCO for more than 20 requirements")
-    out: List[Set[str]]=[]
-    for n in range(1,len(ids)+1):
-        for c in itertools.combinations(ids,n):
-            cs=set(c)
-            if any(m<=cs for m in out): continue
-            if check(s,reqs,scenarios,c)[0]==unsat: out.append(cs)
-    return [sorted(x) for x in out]
+# def all_muses_small(s, reqs, scenarios, limit=20):
+#     ids=list(reqs)
+#     if len(ids)>limit: raise ValueError("Use MARCO for more than 20 requirements")
+#     out: List[Set[str]]=[]
+#     for n in range(1,len(ids)+1):
+#         for c in itertools.combinations(ids,n):
+#             cs=set(c)
+#             if any(m<=cs for m in out): continue
+#             if check(s,reqs,scenarios,c)[0]==unsat: out.append(cs)
+#     return [sorted(x) for x in out]
+
+def all_muses_small(s, reqs, scenarios, ir, limit=20):
+
+    ids = list(reqs)
+
+    if len(ids) > limit:
+        raise ValueError(
+            "Use MARCO for more than 20 requirements"
+        )
+
+    out = []
+
+    for n in range(1, len(ids) + 1):
+
+        for combo in itertools.combinations(ids, n):
+
+            combo_set = set(combo)
+
+            # Skip supersets of an already discovered MUS
+            if any(
+                existing <= combo_set
+                for existing in out
+            ):
+                continue
+
+            result, _ = check_subset(
+                s,
+                reqs,
+                scenarios,
+                ir,
+                combo
+            )
+
+            if result == unsat:
+                out.append(combo_set)
+
+    return [
+        sorted(x)
+        for x in out
+    ]
  
 def export_smt2(s, reqs, scenarios, path="requirements_model.smt2"):
     asm=list(reqs.values())+list(scenarios.values())
@@ -838,15 +982,608 @@ def report(data, ir, result, core, muses, path="consistency_report.json"):
         encoding="utf-8"
     )
     return obj
+
+#pairwise inconsistency
+# def all_pairwise_inconsistencies(s, reqs, scenarios):
+#     ids = list(reqs)
+#     conflicts = []
+
+#     for rid1, rid2 in itertools.combinations(ids, 2):
+#         pair = [rid1, rid2]
+
+#         result, _ = check(
+#             s,
+#             reqs,
+#             scenarios,
+#             pair
+#         )
+
+#         if result == unsat:
+#             conflicts.append(pair)
+
+#     return conflicts
+
+def all_pairwise_inconsistencies(s, reqs, scenarios, ir):
+
+    ids = list(reqs)
+    conflicts = []
+
+    by_ir = {
+        r["requirement_id"]: r
+        for r in ir["ir"]
+    }
+
+    req_to_scenario = {
+        r["requirement_id"]:
+            r["formalization"]["scenario_key"]
+        for r in ir["ir"]
+    }
+
+    for rid1, rid2 in itertools.combinations(ids, 2):
+
+        pair = [rid1, rid2]
+
+        pair_scenarios = {
+            req_to_scenario[rid1],
+            req_to_scenario[rid2]
+        }
+
+        # -----------------------------------------------------
+        # Do not classify vacuous scenarios as pair conflicts
+        # -----------------------------------------------------
+        has_vacuous_scenario = False
+
+        for key in pair_scenarios:
+
+            scenario_result = s.check(
+                scenarios[key]
+            )
+
+            if scenario_result == unsat:
+                has_vacuous_scenario = True
+                break
+
+        if has_vacuous_scenario:
+            continue
+
+        assumptions = [
+            reqs[rid1],
+            reqs[rid2]
+        ]
+
+        assumptions += [
+            scenarios[key]
+            for key in pair_scenarios
+        ]
+
+        result = s.check(*assumptions)
+
+        if result == unsat:
+
+            r1 = by_ir[rid1]
+            r2 = by_ir[rid2]
+
+            atoms1 = (
+                r1["formalization"]
+                .get("consequent", {})
+                .get("all", [])
+            )
+
+            atoms2 = (
+                r2["formalization"]
+                .get("consequent", {})
+                .get("all", [])
+            )
+
+            conflicting_outcomes = []
+
+            for a1 in atoms1:
+                for a2 in atoms2:
+
+                    if (
+                        a1.get("symbol") == a2.get("symbol")
+                        and a1.get("sort") == a2.get("sort")
+                    ):
+
+                        conflicting_outcomes.append({
+                            "symbol": a1["symbol"],
+                            "requirement_1": {
+                                "operator": a1["op"],
+                                "value": a1.get("value")
+                            },
+                            "requirement_2": {
+                                "operator": a2["op"],
+                                "value": a2.get("value")
+                            }
+                        })
+
+            if conflicting_outcomes:
+                reason = (
+                    f"{rid1} and {rid2} constrain the same "
+                    f"outcome under simultaneously applicable "
+                    f"conditions, and the combined constraints "
+                    f"are unsatisfiable."
+                )
+            else:
+                reason = (
+                    f"{rid1} and {rid2} are jointly unsatisfiable "
+                    f"under their applicable scenarios."
+                )
+
+            conflicts.append({
+                "requirement_ids": pair,
+                "status": "INCONSISTENT",
+                "reason": reason,
+                "conflicting_outcomes": conflicting_outcomes
+            })
+
+    return conflicts
+
+def check_global_consistency(s, reqs, scenarios):
+    """
+    Check whether the complete requirement set is globally consistent.
+
+    Returns:
+        status:
+            CONSISTENT   -> complete model is SAT
+            INCONSISTENT -> complete model is UNSAT
+            UNKNOWN      -> solver returned unknown
+
+        Also returns the UNSAT core when applicable.
+    """
+
+    result, core = check(
+        s,
+        reqs,
+        scenarios,
+        ids=list(reqs)
+    )
+
+    if result == sat:
+        status = "CONSISTENT"
+    elif result == unsat:
+        status = "INCONSISTENT"
+    else:
+        status = "UNKNOWN"
+
+    return {
+        "status": status,
+        "solver_result": str(result).upper(),
+        "requirement_count": len(reqs),
+        "unsat_core": core if result == unsat else []
+    }
+
+def check_vacuity(ir):
+    """
+    Detect requirements whose antecedent itself is logically UNSAT.
+
+    Such requirements can never become applicable, so their implication
+    is satisfied vacuously/trivially.
+    """
+
+    vacuous = []
+
+    for r in ir["ir"]:
+        rid = r["requirement_id"]
+        f = r["formalization"]
+
+        # Build a small independent compiler so that only this
+        # requirement's antecedent is tested.
+        temp_ir = {
+            "domain_axioms": ir.get("domain_axioms", []),
+            "ir": []
+        }
+
+        compiler = Compiler(temp_ir)
+
+        antecedent_atoms = (
+            f.get("antecedent", {})
+             .get("all", [])
+        )
+
+        antecedent = compiler.conj(
+            antecedent_atoms
+        )
+
+        temp_solver = Solver()
+        temp_solver.add(antecedent)
+
+        result = temp_solver.check()
+
+        if result == unsat:
+            vacuous.append({
+                "requirement_id": rid,
+                "scenario_key": f["scenario_key"],
+                "status": "VACUOUS",
+                "reason": (
+                    "The requirement antecedent is unsatisfiable. "
+                    "Therefore the requirement can never become "
+                    "applicable and is trivially satisfied."
+                ),
+                "antecedent": antecedent_atoms
+            })
+
+    return vacuous
+
+def check_subset(s, reqs, scenarios, ir, ids):
+    """
+    Check only the selected requirements and their relevant,
+    feasible scenarios.
+    """
+
+    req_to_scenario = {
+        r["requirement_id"]: r["formalization"]["scenario_key"]
+        for r in ir["ir"]
+    }
+
+    assumptions = [
+        reqs[rid]
+        for rid in ids
+    ]
+
+    relevant_scenarios = {
+        req_to_scenario[rid]
+        for rid in ids
+    }
+
+    # Do not force intrinsically impossible scenarios.
+    # Those belong to vacuity analysis.
+    for key in relevant_scenarios:
+        if s.check(scenarios[key]) != unsat:
+            assumptions.append(scenarios[key])
+
+    result = s.check(*assumptions)
+
+    core = (
+        [str(x) for x in s.unsat_core()]
+        if result == unsat
+        else []
+    )
+
+    return result, core
+
+def check_boundary_range_overconstraints(ir):
+    """
+    Detect incompatible numeric constraints over the same canonical
+    Int/Real symbol within the same scenario.
+
+    This specifically targets boundary/range over-constraining.
+    """
+
+    numeric_entries = {}
+
+    # ---------------------------------------------------------
+    # Collect numeric consequent constraints
+    # ---------------------------------------------------------
+
+    for r in ir["ir"]:
+
+        rid = r["requirement_id"]
+        f = r["formalization"]
+        scenario_key = f["scenario_key"]
+
+        atoms = (
+            f.get("consequent", {})
+             .get("all", [])
+        )
+
+        for atom in atoms:
+
+            sort = atom.get("sort")
+            op = atom.get("op")
+
+            if sort not in {"Int", "Real"}:
+                continue
+
+            if op not in {
+                "=",
+                "!=",
+                "<",
+                "<=",
+                ">",
+                ">="
+            }:
+                continue
+
+            key = (
+                scenario_key,
+                atom["symbol"],
+                sort
+            )
+
+            numeric_entries.setdefault(
+                key,
+                []
+            ).append({
+                "requirement_id": rid,
+                "atom": atom
+            })
+
+    conflicts = []
+
+    # ---------------------------------------------------------
+    # Check constraints belonging to same scenario/symbol
+    # ---------------------------------------------------------
+
+    for (
+        scenario_key,
+        symbol,
+        sort
+    ), entries in numeric_entries.items():
+
+        if len(entries) < 2:
+            continue
+
+        solver = Solver()
+
+        if sort == "Int":
+            variable = Int(safe(symbol))
+        else:
+            variable = Real(safe(symbol))
+
+        expressions = []
+
+        for entry in entries:
+
+            atom = entry["atom"]
+            op = atom["op"]
+            value = atom["value"]
+
+            if sort == "Int":
+                constant = IntVal(int(value))
+            else:
+                constant = RealVal(str(value))
+
+            expression = {
+                "=": variable == constant,
+                "!=": variable != constant,
+                "<": variable < constant,
+                "<=": variable <= constant,
+                ">": variable > constant,
+                ">=": variable >= constant
+            }[op]
+
+            expressions.append(expression)
+
+        solver.add(*expressions)
+
+        result = solver.check()
+
+        if result == unsat:
+
+            conflicts.append({
+                "scenario_key": scenario_key,
+                "symbol": symbol,
+                "sort": sort,
+                "status": "OVER_CONSTRAINED",
+                "requirement_ids": sorted({
+                    entry["requirement_id"]
+                    for entry in entries
+                }),
+                "constraints": [
+                    {
+                        "requirement_id":
+                            entry["requirement_id"],
+                        "operator":
+                            entry["atom"]["op"],
+                        "value":
+                            entry["atom"]["value"]
+                    }
+                    for entry in entries
+                ],
+                "reason": (
+                    f"The numeric constraints on '{symbol}' "
+                    f"have no satisfiable value within scenario "
+                    f"'{scenario_key}'."
+                )
+            })
+
+    return conflicts
  
 # -------------------------- End-to-end entrypoints ------------------------
+# def run_pipeline(data, provider=None, model=None, enumerate_all=False):
+#     ir=make_ir(data,LLM(provider,model)); s,reqs,scenarios=Compiler(ir).compile()
+#     result,core=check(s,reqs,scenarios); export_smt2(s,reqs,scenarios); muses=[]
+#     if result==unsat:
+#         muses=[minimize_core(s,reqs,scenarios,core_ids(reqs,core))]
+#         if enumerate_all: muses=all_muses_small(s,reqs,scenarios)
+#     return {"ir":ir,"report":report(data,ir,result,core,muses)}
+
+# def run_pipeline2(data, provider=None, model=None, enumerate_all=False):
+
+#     ir = make_ir(
+#         data,
+#         LLM(provider, model)
+#     )
+
+#     s, reqs, scenarios = Compiler(ir).compile()
+
+#     result, core = check(
+#         s,
+#         reqs,
+#         scenarios
+#     )
+
+#     export_smt2(
+#         s,
+#         reqs,
+#         scenarios
+#     )
+#     muses=[]
+#     pairwise_conflicts = all_pairwise_inconsistencies(
+#         s,
+#         reqs,
+#         scenarios
+#     )
+
+#     global_consistency = check_global_consistency(
+#         s,
+#         reqs,
+#         scenarios
+#     )
+
+#     vacuity = check_vacuity(
+#         ir
+#     )
+
+#     boundary_overconstraints = check_boundary_range_overconstraints(
+#         ir
+#     )
+
+#     return {
+#         "ir": ir,
+
+#         "analysis": {
+#             "global_consistency":
+#                 global_consistency,
+
+#             "pairwise_inconsistencies":
+#                 pairwise_conflicts,
+
+#             "vacuity":
+#                 vacuity,
+
+#             "boundary_range_overconstraints":
+#                 boundary_overconstraints
+#         }
+#     }
+
 def run_pipeline(data, provider=None, model=None, enumerate_all=False):
-    ir=make_ir(data,LLM(provider,model)); s,reqs,scenarios=Compiler(ir).compile()
-    result,core=check(s,reqs,scenarios); export_smt2(s,reqs,scenarios); muses=[]
-    if result==unsat:
-        muses=[minimize_core(s,reqs,scenarios,core_ids(reqs,core))]
-        if enumerate_all: muses=all_muses_small(s,reqs,scenarios)
-    return {"ir":ir,"report":report(data,ir,result,core,muses)}
+
+    # Generate IR
+    ir = make_ir(
+        data,
+        LLM(provider, model)
+    )
+
+    # Compile IR to Z3
+    s, reqs, scenarios = Compiler(ir).compile()
+
+    # Global Z3 check
+    result, core = check(
+        s,
+        reqs,
+        scenarios
+    )
+
+    # Export SMT2
+    export_smt2(
+        s,
+        reqs,
+        scenarios
+    )
+
+    # ---------------------------------------------------------
+    # MUS inconsistencies
+    # ---------------------------------------------------------
+    muses = []
+
+    if result == unsat:
+
+        if enumerate_all:
+
+            muses = all_muses_small(
+                s,
+                reqs,
+                scenarios,
+                ir
+            )
+
+        else:
+
+            core_requirement_ids = core_ids(
+                reqs,
+                core
+            )
+
+            if core_requirement_ids:
+                muses = [
+                    minimize_core(
+                        s,
+                        reqs,
+                        scenarios,
+                        ir,
+                        core_requirement_ids
+                    )
+                ]
+
+    # ---------------------------------------------------------
+    # Pairwise inconsistencies
+    # ---------------------------------------------------------
+    pairwise_conflicts = all_pairwise_inconsistencies(
+        s,
+        reqs,
+        scenarios,
+        ir
+    )
+
+    # ---------------------------------------------------------
+    # Global consistency
+    # ---------------------------------------------------------
+    global_consistency = check_global_consistency(
+        s,
+        reqs,
+        scenarios
+    )
+
+    # ---------------------------------------------------------
+    # Vacuity / trivial satisfaction
+    # ---------------------------------------------------------
+    vacuity = check_vacuity(
+        ir
+    )
+
+    # ---------------------------------------------------------
+    # Boundary / range over-constraining
+    # ---------------------------------------------------------
+    boundary_overconstraints = check_boundary_range_overconstraints(
+        ir
+    )
+
+    # ---------------------------------------------------------
+    # Original MUS report
+    # ---------------------------------------------------------
+    consistency_report = report(
+        data,
+        ir,
+        result,
+        core,
+        muses
+    )
+
+    # ---------------------------------------------------------
+    # Unified output
+    # ---------------------------------------------------------
+    final_output = {
+        "document_id": data["document_id"],
+
+        "global_consistency": global_consistency,
+
+        "mus_inconsistencies": muses,
+
+        "pairwise_inconsistencies": pairwise_conflicts,
+
+        "vacuity": vacuity,
+
+        "boundary_range_overconstraints": boundary_overconstraints
+    }
+
+    # Write final analysis to consistency_report.json
+    Path("consistency_report.json").write_text(
+        json.dumps(
+            final_output,
+            indent=2,
+            ensure_ascii=False
+        ),
+        encoding="utf-8"
+    )
+
+    return {
+        "ir": ir,
+        "report": final_output,
+        "analysis": final_output
+    }
+
  
 def run_pipeline_from_text(raw_text, document_id="SDLC-001", provider=None,
                            model=None, enumerate_all=False):
@@ -854,16 +1591,57 @@ def run_pipeline_from_text(raw_text, document_id="SDLC-001", provider=None,
     return run_pipeline(data,provider,model,enumerate_all)
  
 # ----------------------------- Notebook input -----------------------------
-raw_sdlc_requirements = """
-SOD-1301: When an engineer who owns a repository attempts to approve their own pull request, the engineer shall not be authorized to approve the pull request.
+# raw_sdlc_requirements = """
+# PAIR-1001: When a user submits a payment, the payment shall be approved.
 
-SOD-1302: When an engineer who owns a repository attempts to approve their own pull request, the engineer shall be authorized, as the repository owner, to approve and merge the pull request.
+# PAIR-1002: When a user submits a payment, the payment shall not be approved.
+
+# BOUND-2001: When the system processes a standard request, the response time shall be at least 500 milliseconds.
+
+# BOUND-2002: When the system processes a standard request, the response time shall be less than 300 milliseconds.
+
+# VAC-3001: When the retry count is greater than 10 and the retry count is less than 5, the system shall send a retry notification.
+
+# SAFE-4001: When a user successfully logs in, the system shall record the login event.
+# """
+
+# raw_sdlc_requirements = """
+# AUTH-5001: When a user enters a valid administrator password, the user shall be granted administrator access.
+
+# AUTH-5002: When a user enters a valid administrator password, the user shall not be granted administrator access.
+
+# CAP-6001: When the system processes a batch job, the maximum batch size shall be at least 1000 records.
+
+# CAP-6002: When the system processes a batch job, the maximum batch size shall be less than 500 records.
+
+# VAC-7001: When the active session count is greater than 100 and the active session count is less than 20, the system shall activate overload protection.
+
+# SAFE-8001: When a user changes their password, the system shall record the password change event.
+
+# SAFE-8002: When the system starts successfully, the system shall record the startup event.
+# """
+
+raw_sdlc_requirements = """
+ACCESS-1001: When a registered user requests access to the dashboard, the dashboard access shall be granted.
+
+ACCESS-1002: When a registered user requests access to the dashboard, the dashboard access shall not be granted.
+
+EMAIL-2001: When a customer submits an order, an order confirmation email shall be sent.
+
+EMAIL-2002: When a customer submits an order, an order confirmation email shall not be sent.
+
+VAC-3001: When the login attempt count is greater than 10 and the login attempt count is less than 3, the system shall lock the account.
+
+SAFE-4001: When a customer updates their profile, the profile update shall be recorded.
+
+SAFE-4002: When the application starts successfully, the startup event shall be recorded.
 """
  
 # Step 1 only: create requirements_input.json without calling an LLM
 requirements_input = requirements_text_to_json(raw_sdlc_requirements, "DEMO-001")
 print(json.dumps(requirements_input, indent=2, ensure_ascii=False))
- 
 # Full run after setting LLM_PROVIDER, LLM_MODEL and API key in environment:
 output = run_pipeline_from_text(raw_sdlc_requirements, "DEMO-001", enumerate_all=True)
-print(json.dumps(output["report"], indent=2, ensure_ascii=False))
+print(json.dumps(output["analysis"], indent=2, ensure_ascii=False))
+
+# If any error first try removing the last 3 inputs, if still error then try something different
