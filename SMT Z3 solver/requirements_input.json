@@ -2,12 +2,32 @@
   "document_id": "DEMO-001",
   "requirements": [
     {
-      "requirement_id": "SOD-1301",
-      "text": "When an engineer who owns a repository attempts to approve their own pull request, the engineer shall not be authorized to approve the pull request."
+      "requirement_id": "ACCESS-1001",
+      "text": "When a registered user requests access to the dashboard, the dashboard access shall be granted."
     },
     {
-      "requirement_id": "SOD-1302",
-      "text": "When an engineer who owns a repository attempts to approve their own pull request, the engineer shall be authorized, as the repository owner, to approve and merge the pull request."
+      "requirement_id": "ACCESS-1002",
+      "text": "When a registered user requests access to the dashboard, the dashboard access shall not be granted."
+    },
+    {
+      "requirement_id": "EMAIL-2001",
+      "text": "When a customer submits an order, an order confirmation email shall be sent."
+    },
+    {
+      "requirement_id": "EMAIL-2002",
+      "text": "When a customer submits an order, an order confirmation email shall not be sent."
+    },
+    {
+      "requirement_id": "VAC-3001",
+      "text": "When the login attempt count is greater than 10 and the login attempt count is less than 3, the system shall lock the account."
+    },
+    {
+      "requirement_id": "SAFE-4001",
+      "text": "When a customer updates their profile, the profile update shall be recorded."
+    },
+    {
+      "requirement_id": "SAFE-4002",
+      "text": "When the application starts successfully, the startup event shall be recorded."
     }
   ]
 }
