@@ -1,0 +1,226 @@
+{
+  "document_id": "DEMO-001",
+  "ir_version": "2.1",
+  "canonical_registry": {
+    "actors": [
+      {
+        "symbol": "engineer",
+        "description": "An individual with engineering responsibilities."
+      },
+      {
+        "symbol": "repository_owner",
+        "description": "An engineer who owns a repository."
+      }
+    ],
+    "entities": [
+      {
+        "symbol": "repository",
+        "description": "A code repository owned by an engineer."
+      },
+      {
+        "symbol": "pull_request",
+        "description": "A request to merge code changes into a repository."
+      }
+    ],
+    "events": [
+      {
+        "symbol": "attempt_to_approve_own_pull_request",
+        "description": "An engineer attempts to approve their own pull request."
+      }
+    ],
+    "states": [],
+    "terms": []
+  },
+  "domain_axioms": [],
+  "ir": [
+    {
+      "requirement_id": "SOD-1301",
+      "ir_status": "complete",
+      "requirement_type": "constraint",
+      "statement": {
+        "modality": "shall_not",
+        "actors": [
+          {
+            "symbol": "repository_owner"
+          }
+        ],
+        "actions": [
+          {
+            "symbol": "approve_pull_request"
+          }
+        ],
+        "objects": [
+          {
+            "symbol": "pull_request"
+          }
+        ],
+        "conditions": [
+          {
+            "symbol": "attempt_to_approve_own_pull_request",
+            "sort": "Bool",
+            "op": "is_true"
+          }
+        ],
+        "effects": [],
+        "authorization": {
+          "required": true,
+          "actor_requirements": [
+            {
+              "symbol": "repository_owner",
+              "sort": "Bool",
+              "op": "is_false"
+            }
+          ]
+        },
+        "constraints": [],
+        "temporal": {
+          "has_temporal_constraint": false
+        },
+        "quantification": {
+          "quantifier": "none_explicit",
+          "scope_refs": []
+        }
+      },
+      "entities": [
+        {
+          "symbol": "repository"
+        },
+        {
+          "symbol": "pull_request"
+        }
+      ],
+      "events": [
+        {
+          "symbol": "attempt_to_approve_own_pull_request"
+        }
+      ],
+      "states": [],
+      "dependencies": [],
+      "traceability": {
+        "source_requirement_id": "SOD-1301",
+        "original_text": "When an engineer who owns a repository attempts to approve their own pull request, the engineer shall not be authorized to approve the pull request.",
+        "refined_text": "When a repository owner attempts to approve their own pull request, they shall not be authorized to approve the pull request."
+      },
+      "unresolved": [],
+      "formalization": {
+        "scenario_key": "repository_owner_attempts_to_approve_own_pull_request",
+        "antecedent": {
+          "all": [
+            {
+              "symbol": "attempt_to_approve_own_pull_request",
+              "sort": "Bool",
+              "op": "is_true"
+            }
+          ]
+        },
+        "consequent": {
+          "all": [
+            {
+              "symbol": "approval_authorized",
+              "sort": "Bool",
+              "op": "is_false"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "requirement_id": "SOD-1302",
+      "ir_status": "needs_review",
+      "requirement_type": "constraint",
+      "statement": {
+        "modality": "shall",
+        "actors": [
+          {
+            "symbol": "repository_owner"
+          }
+        ],
+        "actions": [
+          {
+            "symbol": "approve_and_merge_pull_request"
+          }
+        ],
+        "objects": [
+          {
+            "symbol": "pull_request"
+          }
+        ],
+        "conditions": [
+          {
+            "symbol": "attempt_to_approve_own_pull_request",
+            "sort": "Bool",
+            "op": "is_true"
+          }
+        ],
+        "effects": [],
+        "authorization": {
+          "required": true,
+          "actor_requirements": [
+            {
+              "symbol": "repository_owner",
+              "sort": "Bool",
+              "op": "is_true"
+            }
+          ]
+        },
+        "constraints": [],
+        "temporal": {
+          "has_temporal_constraint": false
+        },
+        "quantification": {
+          "quantifier": "none_explicit",
+          "scope_refs": []
+        }
+      },
+      "entities": [
+        {
+          "symbol": "repository"
+        },
+        {
+          "symbol": "pull_request"
+        }
+      ],
+      "events": [
+        {
+          "symbol": "attempt_to_approve_own_pull_request"
+        }
+      ],
+      "states": [],
+      "dependencies": [],
+      "traceability": {
+        "source_requirement_id": "SOD-1302",
+        "original_text": "When an engineer who owns a repository attempts to approve their own pull request, the engineer shall be authorized, as the repository owner, to approve and merge the pull request.",
+        "refined_text": "When a repository owner attempts to approve their own pull request, they shall be authorized to approve and merge the pull request."
+      },
+      "unresolved": [
+        "Conflict with SOD-1301: SOD-1301 prohibits authorization for repository owners to approve their own pull requests, while SOD-1302 mandates authorization for the same scenario."
+      ],
+      "formalization": {
+        "scenario_key": "repository_owner_attempts_to_approve_own_pull_request",
+        "antecedent": {
+          "all": [
+            {
+              "symbol": "attempt_to_approve_own_pull_request",
+              "sort": "Bool",
+              "op": "is_true"
+            }
+          ]
+        },
+        "consequent": {
+          "all": [
+            {
+              "symbol": "approval_authorized",
+              "sort": "Bool",
+              "op": "is_true"
+            },
+            {
+              "symbol": "merge_authorized",
+              "sort": "Bool",
+              "op": "is_true"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
