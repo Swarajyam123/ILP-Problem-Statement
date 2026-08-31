@@ -3,74 +3,65 @@
   "ir_version": "2.1",
   "canonical_registry": {
     "actors": [
-      {
-        "symbol": "engineer",
-        "description": "An individual with engineering responsibilities."
-      },
-      {
-        "symbol": "repository_owner",
-        "description": "An engineer who owns a repository."
-      }
+      "registered_user",
+      "customer",
+      "system"
     ],
     "entities": [
-      {
-        "symbol": "repository",
-        "description": "A code repository owned by an engineer."
-      },
-      {
-        "symbol": "pull_request",
-        "description": "A request to merge code changes into a repository."
-      }
+      "dashboard",
+      "order",
+      "profile",
+      "application"
     ],
     "events": [
-      {
-        "symbol": "attempt_to_approve_own_pull_request",
-        "description": "An engineer attempts to approve their own pull request."
-      }
+      "dashboard_access_requested",
+      "order_submitted",
+      "profile_updated",
+      "application_started"
     ],
-    "states": [],
-    "terms": []
+    "states": [
+      "dashboard_access_granted",
+      "order_confirmation_email_sent",
+      "account_locked",
+      "profile_update_recorded",
+      "startup_event_recorded"
+    ],
+    "terms": [
+      "login_attempt_count"
+    ]
   },
   "domain_axioms": [],
   "ir": [
     {
-      "requirement_id": "SOD-1301",
+      "requirement_id": "ACCESS-1001",
       "ir_status": "complete",
-      "requirement_type": "constraint",
+      "requirement_type": "functional",
       "statement": {
-        "modality": "shall_not",
+        "modality": "shall",
         "actors": [
-          {
-            "symbol": "repository_owner"
-          }
+          "registered_user"
         ],
-        "actions": [
-          {
-            "symbol": "approve_pull_request"
-          }
-        ],
+        "actions": [],
         "objects": [
-          {
-            "symbol": "pull_request"
-          }
+          "dashboard"
         ],
         "conditions": [
           {
-            "symbol": "attempt_to_approve_own_pull_request",
+            "symbol": "dashboard_access_requested",
             "sort": "Bool",
             "op": "is_true"
           }
         ],
-        "effects": [],
+        "effects": [
+          {
+            "symbol": "dashboard_access_granted",
+            "sort": "Bool",
+            "op": "is_true"
+          }
+        ],
         "authorization": {
-          "required": true,
-          "actor_requirements": [
-            {
-              "symbol": "repository_owner",
-              "sort": "Bool",
-              "op": "is_false"
-            }
-          ]
+          "required": false,
+          "actor_requirements": []
         },
         "constraints": [],
         "temporal": {
@@ -82,32 +73,27 @@
         }
       },
       "entities": [
-        {
-          "symbol": "repository"
-        },
-        {
-          "symbol": "pull_request"
-        }
+        "dashboard"
       ],
       "events": [
-        {
-          "symbol": "attempt_to_approve_own_pull_request"
-        }
+        "dashboard_access_requested"
       ],
-      "states": [],
+      "states": [
+        "dashboard_access_granted"
+      ],
       "dependencies": [],
       "traceability": {
-        "source_requirement_id": "SOD-1301",
-        "original_text": "When an engineer who owns a repository attempts to approve their own pull request, the engineer shall not be authorized to approve the pull request.",
-        "refined_text": "When a repository owner attempts to approve their own pull request, they shall not be authorized to approve the pull request."
+        "source_requirement_id": "ACCESS-1001",
+        "original_text": "When a registered user requests access to the dashboard, the dashboard access shall be granted.",
+        "refined_text": "When a registered user requests access to the dashboard, the dashboard access shall be granted."
       },
       "unresolved": [],
       "formalization": {
-        "scenario_key": "repository_owner_attempts_to_approve_own_pull_request",
+        "scenario_key": "dashboard_access_requested_by_registered_user",
         "antecedent": {
           "all": [
             {
-              "symbol": "attempt_to_approve_own_pull_request",
+              "symbol": "dashboard_access_requested",
               "sort": "Bool",
               "op": "is_true"
             }
@@ -116,7 +102,85 @@
         "consequent": {
           "all": [
             {
-              "symbol": "approval_authorized",
+              "symbol": "dashboard_access_granted",
+              "sort": "Bool",
+              "op": "is_true"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "requirement_id": "ACCESS-1002",
+      "ir_status": "complete",
+      "requirement_type": "functional",
+      "statement": {
+        "modality": "shall_not",
+        "actors": [
+          "registered_user"
+        ],
+        "actions": [],
+        "objects": [
+          "dashboard"
+        ],
+        "conditions": [
+          {
+            "symbol": "dashboard_access_requested",
+            "sort": "Bool",
+            "op": "is_true"
+          }
+        ],
+        "effects": [
+          {
+            "symbol": "dashboard_access_granted",
+            "sort": "Bool",
+            "op": "is_false"
+          }
+        ],
+        "authorization": {
+          "required": false,
+          "actor_requirements": []
+        },
+        "constraints": [],
+        "temporal": {
+          "has_temporal_constraint": false
+        },
+        "quantification": {
+          "quantifier": "none_explicit",
+          "scope_refs": []
+        }
+      },
+      "entities": [
+        "dashboard"
+      ],
+      "events": [
+        "dashboard_access_requested"
+      ],
+      "states": [
+        "dashboard_access_granted"
+      ],
+      "dependencies": [],
+      "traceability": {
+        "source_requirement_id": "ACCESS-1002",
+        "original_text": "When a registered user requests access to the dashboard, the dashboard access shall not be granted.",
+        "refined_text": "When a registered user requests access to the dashboard, the dashboard access shall not be granted."
+      },
+      "unresolved": [],
+      "formalization": {
+        "scenario_key": "dashboard_access_requested_by_registered_user",
+        "antecedent": {
+          "all": [
+            {
+              "symbol": "dashboard_access_requested",
+              "sort": "Bool",
+              "op": "is_true"
+            }
+          ]
+        },
+        "consequent": {
+          "all": [
+            {
+              "symbol": "dashboard_access_granted",
               "sort": "Bool",
               "op": "is_false"
             }
@@ -125,43 +189,35 @@
       }
     },
     {
-      "requirement_id": "SOD-1302",
-      "ir_status": "needs_review",
-      "requirement_type": "constraint",
+      "requirement_id": "EMAIL-2001",
+      "ir_status": "complete",
+      "requirement_type": "functional",
       "statement": {
         "modality": "shall",
         "actors": [
-          {
-            "symbol": "repository_owner"
-          }
+          "customer"
         ],
-        "actions": [
-          {
-            "symbol": "approve_and_merge_pull_request"
-          }
-        ],
+        "actions": [],
         "objects": [
-          {
-            "symbol": "pull_request"
-          }
+          "order"
         ],
         "conditions": [
           {
-            "symbol": "attempt_to_approve_own_pull_request",
+            "symbol": "order_submitted",
             "sort": "Bool",
             "op": "is_true"
           }
         ],
-        "effects": [],
+        "effects": [
+          {
+            "symbol": "order_confirmation_email_sent",
+            "sort": "Bool",
+            "op": "is_true"
+          }
+        ],
         "authorization": {
-          "required": true,
-          "actor_requirements": [
-            {
-              "symbol": "repository_owner",
-              "sort": "Bool",
-              "op": "is_true"
-            }
-          ]
+          "required": false,
+          "actor_requirements": []
         },
         "constraints": [],
         "temporal": {
@@ -173,34 +229,27 @@
         }
       },
       "entities": [
-        {
-          "symbol": "repository"
-        },
-        {
-          "symbol": "pull_request"
-        }
+        "order"
       ],
       "events": [
-        {
-          "symbol": "attempt_to_approve_own_pull_request"
-        }
+        "order_submitted"
       ],
-      "states": [],
+      "states": [
+        "order_confirmation_email_sent"
+      ],
       "dependencies": [],
       "traceability": {
-        "source_requirement_id": "SOD-1302",
-        "original_text": "When an engineer who owns a repository attempts to approve their own pull request, the engineer shall be authorized, as the repository owner, to approve and merge the pull request.",
-        "refined_text": "When a repository owner attempts to approve their own pull request, they shall be authorized to approve and merge the pull request."
+        "source_requirement_id": "EMAIL-2001",
+        "original_text": "When a customer submits an order, an order confirmation email shall be sent.",
+        "refined_text": "When a customer submits an order, an order confirmation email shall be sent."
       },
-      "unresolved": [
-        "Conflict with SOD-1301: SOD-1301 prohibits authorization for repository owners to approve their own pull requests, while SOD-1302 mandates authorization for the same scenario."
-      ],
+      "unresolved": [],
       "formalization": {
-        "scenario_key": "repository_owner_attempts_to_approve_own_pull_request",
+        "scenario_key": "order_submitted_by_customer",
         "antecedent": {
           "all": [
             {
-              "symbol": "attempt_to_approve_own_pull_request",
+              "symbol": "order_submitted",
               "sort": "Bool",
               "op": "is_true"
             }
@@ -209,12 +258,329 @@
         "consequent": {
           "all": [
             {
-              "symbol": "approval_authorized",
+              "symbol": "order_confirmation_email_sent",
               "sort": "Bool",
               "op": "is_true"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "requirement_id": "EMAIL-2002",
+      "ir_status": "complete",
+      "requirement_type": "functional",
+      "statement": {
+        "modality": "shall_not",
+        "actors": [
+          "customer"
+        ],
+        "actions": [],
+        "objects": [
+          "order"
+        ],
+        "conditions": [
+          {
+            "symbol": "order_submitted",
+            "sort": "Bool",
+            "op": "is_true"
+          }
+        ],
+        "effects": [
+          {
+            "symbol": "order_confirmation_email_sent",
+            "sort": "Bool",
+            "op": "is_false"
+          }
+        ],
+        "authorization": {
+          "required": false,
+          "actor_requirements": []
+        },
+        "constraints": [],
+        "temporal": {
+          "has_temporal_constraint": false
+        },
+        "quantification": {
+          "quantifier": "none_explicit",
+          "scope_refs": []
+        }
+      },
+      "entities": [
+        "order"
+      ],
+      "events": [
+        "order_submitted"
+      ],
+      "states": [
+        "order_confirmation_email_sent"
+      ],
+      "dependencies": [],
+      "traceability": {
+        "source_requirement_id": "EMAIL-2002",
+        "original_text": "When a customer submits an order, an order confirmation email shall not be sent.",
+        "refined_text": "When a customer submits an order, an order confirmation email shall not be sent."
+      },
+      "unresolved": [],
+      "formalization": {
+        "scenario_key": "order_submitted_by_customer",
+        "antecedent": {
+          "all": [
+            {
+              "symbol": "order_submitted",
+              "sort": "Bool",
+              "op": "is_true"
+            }
+          ]
+        },
+        "consequent": {
+          "all": [
+            {
+              "symbol": "order_confirmation_email_sent",
+              "sort": "Bool",
+              "op": "is_false"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "requirement_id": "VAC-3001",
+      "ir_status": "needs_review",
+      "requirement_type": "constraint",
+      "statement": {
+        "modality": "shall",
+        "actors": [
+          "system"
+        ],
+        "actions": [],
+        "objects": [],
+        "conditions": [
+          {
+            "symbol": "login_attempt_count",
+            "sort": "Int",
+            "op": ">",
+            "value": 10
+          },
+          {
+            "symbol": "login_attempt_count",
+            "sort": "Int",
+            "op": "<",
+            "value": 3
+          }
+        ],
+        "effects": [
+          {
+            "symbol": "account_locked",
+            "sort": "Bool",
+            "op": "is_true"
+          }
+        ],
+        "authorization": {
+          "required": false,
+          "actor_requirements": []
+        },
+        "constraints": [],
+        "temporal": {
+          "has_temporal_constraint": false
+        },
+        "quantification": {
+          "quantifier": "none_explicit",
+          "scope_refs": []
+        }
+      },
+      "entities": [],
+      "events": [],
+      "states": [
+        "account_locked"
+      ],
+      "dependencies": [],
+      "traceability": {
+        "source_requirement_id": "VAC-3001",
+        "original_text": "When the login attempt count is greater than 10 and the login attempt count is less than 3, the system shall lock the account.",
+        "refined_text": "When the login attempt count is greater than 10 and the login attempt count is less than 3, the system shall lock the account."
+      },
+      "unresolved": [
+        "Conflicting conditions: login_attempt_count > 10 and login_attempt_count < 3 cannot be true simultaneously."
+      ],
+      "formalization": {
+        "scenario_key": "login_attempt_count_out_of_bounds",
+        "antecedent": {
+          "all": [
+            {
+              "symbol": "login_attempt_count",
+              "sort": "Int",
+              "op": ">",
+              "value": 10
             },
             {
-              "symbol": "merge_authorized",
+              "symbol": "login_attempt_count",
+              "sort": "Int",
+              "op": "<",
+              "value": 3
+            }
+          ]
+        },
+        "consequent": {
+          "all": [
+            {
+              "symbol": "account_locked",
+              "sort": "Bool",
+              "op": "is_true"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "requirement_id": "SAFE-4001",
+      "ir_status": "complete",
+      "requirement_type": "functional",
+      "statement": {
+        "modality": "shall",
+        "actors": [
+          "customer"
+        ],
+        "actions": [],
+        "objects": [
+          "profile"
+        ],
+        "conditions": [
+          {
+            "symbol": "profile_updated",
+            "sort": "Bool",
+            "op": "is_true"
+          }
+        ],
+        "effects": [
+          {
+            "symbol": "profile_update_recorded",
+            "sort": "Bool",
+            "op": "is_true"
+          }
+        ],
+        "authorization": {
+          "required": false,
+          "actor_requirements": []
+        },
+        "constraints": [],
+        "temporal": {
+          "has_temporal_constraint": false
+        },
+        "quantification": {
+          "quantifier": "none_explicit",
+          "scope_refs": []
+        }
+      },
+      "entities": [
+        "profile"
+      ],
+      "events": [
+        "profile_updated"
+      ],
+      "states": [
+        "profile_update_recorded"
+      ],
+      "dependencies": [],
+      "traceability": {
+        "source_requirement_id": "SAFE-4001",
+        "original_text": "When a customer updates their profile, the profile update shall be recorded.",
+        "refined_text": "When a customer updates their profile, the profile update shall be recorded."
+      },
+      "unresolved": [],
+      "formalization": {
+        "scenario_key": "profile_updated_by_customer",
+        "antecedent": {
+          "all": [
+            {
+              "symbol": "profile_updated",
+              "sort": "Bool",
+              "op": "is_true"
+            }
+          ]
+        },
+        "consequent": {
+          "all": [
+            {
+              "symbol": "profile_update_recorded",
+              "sort": "Bool",
+              "op": "is_true"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "requirement_id": "SAFE-4002",
+      "ir_status": "complete",
+      "requirement_type": "functional",
+      "statement": {
+        "modality": "shall",
+        "actors": [
+          "system"
+        ],
+        "actions": [],
+        "objects": [
+          "application"
+        ],
+        "conditions": [
+          {
+            "symbol": "application_started",
+            "sort": "Bool",
+            "op": "is_true"
+          }
+        ],
+        "effects": [
+          {
+            "symbol": "startup_event_recorded",
+            "sort": "Bool",
+            "op": "is_true"
+          }
+        ],
+        "authorization": {
+          "required": false,
+          "actor_requirements": []
+        },
+        "constraints": [],
+        "temporal": {
+          "has_temporal_constraint": false
+        },
+        "quantification": {
+          "quantifier": "none_explicit",
+          "scope_refs": []
+        }
+      },
+      "entities": [
+        "application"
+      ],
+      "events": [
+        "application_started"
+      ],
+      "states": [
+        "startup_event_recorded"
+      ],
+      "dependencies": [],
+      "traceability": {
+        "source_requirement_id": "SAFE-4002",
+        "original_text": "When the application starts successfully, the startup event shall be recorded.",
+        "refined_text": "When the application starts successfully, the startup event shall be recorded."
+      },
+      "unresolved": [],
+      "formalization": {
+        "scenario_key": "application_started_successfully",
+        "antecedent": {
+          "all": [
+            {
+              "symbol": "application_started",
+              "sort": "Bool",
+              "op": "is_true"
+            }
+          ]
+        },
+        "consequent": {
+          "all": [
+            {
+              "symbol": "startup_event_recorded",
               "sort": "Bool",
               "op": "is_true"
             }
